@@ -11,9 +11,11 @@ def parse_arguments():
   parser = argparse.ArgumentParser( prog='gigashell',
                                     description='Sber GigaChat в твоей консоли!',
                                     epilog='Возрадуемся же!' )
-  parser.add_argument( '--shell', '-s', help = 'Сгенерировать только финальную команду', action = 'store_true' )
-  parser.add_argument( '--prompt', '-p', help = 'Текст запроса', action = 'store', required = True )
-
+  parser.add_argument( 'request', metavar = 'ЗАПРОС', help = 'Запрос к GigaChat' )
+  group = parser.add_mutually_exclusive_group()
+  group.add_argument( '-s', '--shell', help = 'Сгенерировать только финальную команду', action = 'store_true' )
+  group.add_argument( '-c', '--chat', nargs = 1, action = 'store', help = 'Название для чата' )
+  group.add_argument( '-l', '--list-chats', action = 'store_true', help = 'Список чатов' )
   # Здесь возвращаем сразу результат возврата функции
   return parser.parse_args()
 
@@ -42,27 +44,33 @@ def make_prompt():
 
   return warmup_prompt
 
-# Готовим разогревочный промпт к передаче в API
-#messages = [ SystemMessage( content = warmup_prompt ) ]
+def init_chat():
+  if not os.path.exists( '~/.gigashell/chats' ):
+    mkdir( '~/.gigashell/chats' )
+  else:
+    return False
+
+#def do_continuous_request( chat_name ):
+
+
 
 # В функцию надо передать запрос от пользователя
-def do_request( request_text ):
+def do_request( system_message, request_text ):
   # Авторизация в сервисе GigaChat
   #chat = GigaChat( credentials=<авторизационные_данные>, verify_ssl_certs=False)
   chat = GigaChat( verify_ssl_certs=False)
-  # Готовим разогревочный промпт к передаче в API
-
-#  messages = [ SystemMessage( content = make_prompt() ) ]
-#  messages.append( HumanMessage( content = request_text ) )
-  messages = [ SystemMessage( content = make_prompt() ), HumanMessage( content = request_text ) ]
+  messages = [ SystemMessage( content = system_message ), HumanMessage( content = request_text ) ]
   res = chat( messages )
   # messages.append(res)
   print( res.content )
+
+#  print( f'messages полностью: {messages}' )
+#  print( f"res полностью: {res}" )
   return 0
 
 if __name__ == '__main__':
   # Парсим аргументы
   arguments = parse_arguments()
-  do_request( arguments.prompt )
+  do_request( make_prompt(), arguments.request )
 
 
