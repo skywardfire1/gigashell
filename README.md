@@ -12,7 +12,7 @@
 ## Настраиваем авторизацию в сервисе
 
 ```sh
-echo "\n" > ~/.bashrc
+echo -e "\n" >> ~/.bashrc
 echo "export GIGACHAT_CREDENTIALS=ТОКЕН >> ~/.bashrc
 ```
 
