@@ -1,5 +1,4 @@
-# GIGA
-# SHELL
+![GIGA SHELL](/header.jpg)
 
 Привет! Ты сейчас находишься в репозитории gigashell, неофициальная утилита командной строки, с помощью которой можно легко и быстро прикрутить современную нейросеть к твоей линукс-консоли.
 
@@ -13,7 +12,7 @@
 
 ```sh
 echo -e "\n" >> ~/.bashrc
-echo "export GIGACHAT_CREDENTIALS=ТОКЕН >> ~/.bashrc
+echo "export GIGACHAT_CREDENTIALS=ТОКЕН" >> ~/.bashrc
 ```
 
 Если используешь ZSH, то файл будет называться .zshrc
