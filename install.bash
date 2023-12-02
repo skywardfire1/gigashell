@@ -15,6 +15,7 @@ function install {
 echo Устанавливаем модули Python...
 pip install -q gigachat  2> /dev/null || { echo "Не удалось установить библиотеку gigachat! Установка прервана" && exit 1 ; }
 pip install -q langchain 2> /dev/null || { echo "Не удалось установить библиотеку langchain! Установка прервана" && exit 1 ; }
+pip install -q psutil 2> /dev/null || { echo "Не удалось установить библиотеку psutil! Установка прервана" && exit 1 ; }
 
 echo Устанавливаем GigaShell...
 sudo cp gigashell.py /usr/local/bin

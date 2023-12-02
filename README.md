@@ -23,6 +23,8 @@ echo "export GIGACHAT_CREDENTIALS=ТОКЕН" >> ~/.bashrc
 
 ```sh
 git clone https://github.com/skywardfire1/gigashell.git
+python3 -m venv venv
+source venv/bin/activate
 ./install.bash --install
 ```
 
