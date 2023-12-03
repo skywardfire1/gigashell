@@ -38,14 +38,16 @@ def prompt_data_cpu():
   return info
 
 def prompt_data_network_iface():
+  if_addrs = psutil.net_if_addrs()
+
   info = f'Имеются следующие сетевые интерфейсы:'
 
   for interface_name, interface_addresses in if_addrs.items():
     for address in interface_addresses:
       if str(address.family) == 'AddressFamily.AF_INET':
-        result += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
+        info += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
       if str(address.family) == 'AddressFamily.AF_PACKET':
-        result += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
+        info += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
   return info
 
 # Собираем данные о системе и составляем разогревочный промт
@@ -58,7 +60,8 @@ def make_prompt():
     shell_name = os.readlink('/proc/%d/exe' % os.getppid())
 
     warmup_prompt = f'Твоя задача отвечать на вопрос пользователя, который работает в операционной системе {system_os}, версия ядра {kernel_version}. Дистрибутив называется {system_distributive} {distributive_version}. Архитектура системы {system_architecture}. Оболочка {shell_name}.'
-    if arguments.more_info: warmup_prompt += 'Информация о процессорах: {prompt_data_cpu()}. Информация о сетевых интерфейсах: {prompt_data_network_iface()}'
+    if arguments.more_info: warmup_prompt += f'Информация о процессорах: {prompt_data_cpu()}. Информация о сетевых интерфейсах: {prompt_data_network_iface()}'
+
     # Если включен флаг -s, то скрипт должен вывести только лишь команду, без объяснений. Пока на данный момент работает плохо
     if arguments.shell:
         warmup_prompt += " {warmup_prompt}. Не пиши дополнительных объяснений. Напиши только одну команду. Нужна только одна команда. Не выводи тэгов code. Команда должна быть готова к выполнению без дополнительных правок. Если тебе недостаточно данных, предоставь наиболее логичное решение. Все перечисленные требования обязательны к выполнению. Без исключений. Все перечисленные требования обязательны к выполнению, без исключений. Ответь на вопрос кратко, одной командой."
@@ -100,6 +103,9 @@ def do_request( request_text ):
     messages = [ system_message, user_message ]
 
   res = chat( messages )
+
+#  print( messages )
+
   print( res.content )
   messages.append( res )
   store_message( messages )
