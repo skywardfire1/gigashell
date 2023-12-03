@@ -8,154 +8,45 @@ import sys
 from datetime import datetime
 import psutil
 import distro
-
+import pickle
 
 def parse_arguments():
-    parser = argparse.ArgumentParser( prog='gigashell',
-                                    description='Sber GigaChat в твоей консоли!',
-                                    epilog='Нейросеть в твоем терминале' )
-    parser.add_argument( 'request', metavar = 'ЗАПРОС', nargs = '?', default = '', help = 'Запрос к GigaChat' )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument( '-s', '--shell', action = 'store_true', help = 'Сгенерировать только финальную команду. Имеет смысл только совместно с запросом' )
-    # TODO group.add_argument( '-c', '--chat', nargs = 1, action = 'store', help = 'Название для чата' )
-    # TODO group.add_argument( '-l', '--list-chats', action = 'store_true', help = 'Список чатов' )
-    group.add_argument( '-v', '--version', action = 'store_true', help = 'Вывести информацию о версии, и закончить работу' )
-    # Здесь возвращаем сразу результат возврата функции
-    return parser.parse_args()
+  parser = argparse.ArgumentParser( prog='gigashell', description='Sber GigaChat в твоей консоли!', epilog='Возрадуемся же!' )
 
+  group_v_r = parser.add_mutually_exclusive_group()
+  group_v_r.add_argument( 'request', metavar = 'ЗАПРОС', nargs = '?', default = '', help = 'Запрос к GigaChat' )
+  group_v_r.add_argument( '-v', '--version', action = 'store_true', help = 'Вывести информацию о версии, и закончить работу' )
 
-def get_size(bytes: int, suffix: str='B') -> str:
-	"""Получаем размер из байтов в более большие форматы. Доступны:
-	килобайты, мегабайты, гигабайты, терабайты, петабайты.
-	Аргументы:
-	 + bytes: int - количество байтов
-	 + suffix: str - тип суффикса
-	Возвращает:
-	 + str - размер"""
-	factor = 1024
+  group_2 = parser.add_mutually_exclusive_group()
+  group_2.add_argument( '-s', '--shell', action = 'store_true', help = 'Сгенерировать только финальную команду. Имеет смысл только совместно с запросом' )
+#  group_2.add_argument( '-c', '--continuous', action = 'store_true', help = 'Продолжительный режим, т.е. режим чата' )
+#  group_2.add_argument( '-l', '--list-chats', action = 'store_true', help = 'Список чатов' )
+  # TODO: Убрать хардкод домашней директории
+#  parser.add_argument( '-S', '--settings-directory', action = 'store', default = '/home/blackfire', help = 'Директория для сохранения чатов и настроек' )
+  parser.add_argument( '-L', '--last-message', action = 'store_true', help = 'Включить в запрос предыдущее сообщение' )
+  parser.add_argument( '-M', '--more-info', action = 'store_true', help = 'Добавить в запрос больше информации о системе' )
+  # Здесь возвращаем сразу результат возврата функции
+  return parser.parse_args()
 
-	for unit in ["", "K", "M", "G", "T", "P"]:
-		if bytes < factor:
-			return f'{bytes:.2f}{unit}{suffix}'
-		bytes /= factor
+# Больше данных о системе
+def prompt_data_cpu():
+  # Физические ядра пока не включаю в запрос, но на всякий случай оставлю тут {psutil.cpu_count(logical=False)}')
+  info = f'Количество ядер: {psutil.cpu_count(logical=True)}.'
+  info += f' Маскимальная частота: {psutil.cpu_freq().max:.2f}МГц.'
+  info += f' Минимальная частота: {psutil.cpu_freq().min:.2f}МГц.'
+  info += f' Текущая частота: {psutil.cpu_freq().current:.2f}МГц.'
+  return info
 
+def prompt_data_network_iface():
+  info = f'Имеются следующие сетевые интерфейсы:'
 
-def print_log(text: str) -> None:
-	"""Вывод на экран строки
-	Аргументы:
-	 + text: str - текст для вывода"""
-	print(text)
-
-
-class ResourceMonitor:
-	"""Монитор системных ресурсов компьютера"""
-	def __init__(self):
-		# Инициализация объекта - создание переменных
-		self.uname = platform.uname()
-		self.cpufreq = psutil.cpu_freq()
-		self.swap = psutil.swap_memory()
-		self.svmem = psutil.virtual_memory()
-		self.partitions = psutil.disk_partitions()
-		self.if_addrs = psutil.net_if_addrs()
-		self.net_io = psutil.net_io_counters()
-
-	def call_all(self):
-		# Вызов всех функций
-		self.system_info()
-		self.proc_info()
-		self.ram_info()
-		self.disk_info()
-		self.network_info()
-
-	def system_info(self):
-		# Общая информация о системе
-		print('=' * 10, 'Информация о системе', '=' * 10)
-		logging.info('Информация о системе')
-		print_log(f'Система: {self.uname.system}')
-		print_log(f'Имя сетевого узла: {self.uname.node}')
-		print_log(f'Выпуск: {self.uname.release}')
-		print_log(f'Версия: {self.uname.version}')
-		print_log(f'Машина: {self.uname.machine}')
-		print_log(f'Процессор: {self.uname.processor}')
-
-	def proc_info(self):
-		# Информация о процессоре
-		print('=' * 10, 'Информация о процессоре', '=' * 10)
-		logging.info('Информация о процессоре')
-		print_log(f'Физические ядра: {psutil.cpu_count(logical=False)}')
-		print_log(f'Количество ядер: {psutil.cpu_count(logical=True)}')
-		print_log(f'Маскимальная частота процессора: {self.cpufreq.max:.2f}МГц')
-		print_log(f'Минимальная частота процессора: {self.cpufreq.min:.2f}МГц')
-		print_log(f'Текущая частота процессора: {self.cpufreq.current:.2f}МГц')
-		for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-			print_log(f'Загруженность ядра {i}: {percentage}%')
-		print_log(f'Общая загруженность процессора: {psutil.cpu_percent()}%')
-
-	def network_info(self):
-		# Информация о сети
-		print('=' * 10, 'Информация о сети', '=' * 10)
-		logging.info('Информация о сети')
-		for inteface_name, interface_addresses in self.if_addrs.items():
-			for address in interface_addresses:
-				print('=' * 5, f'Информация о интерфейсе сети: {inteface_name}', '=' * 5)
-				logging.info(f'Информация о интерфейсе сети: {inteface_name}')
-				if str(address.family) == 'AddressFamily.AF_INET':
-					print_log(f'Тип интерфейса сети {inteface_name}: {str(address.family)}')
-					print_log(f'IP интерфейса сети {inteface_name}: {address.address}')
-					print_log(f'Сетевая маска интерфейса сети {inteface_name}: {address.netmask}')
-					print_log(f'Широковещательный IP-адрес интерфейса сети {inteface_name}: {address.broadcast}')
-				elif str(address.family) == 'AddressFamily.AF_PACKET':
-					print_log(f'Тип интерфейса сети {inteface_name}: {str(address.family)}')
-					print_log(f'MAC-адрес интерфейса сети {inteface_name}: {address.address}')
-					print_log(f'Сетевая маска интерфейса сети {inteface_name}: {address.netmask}')
-					print_log(f'Широковещательный IP-адрес интерфейса сети {inteface_name}: {address.broadcast}')
-				else:
-					print_log(f'Тип интерфейса сети {inteface_name}: {str(address.family)}')
-					print_log(f'MAC-адрес интерфейса сети {inteface_name}: {address.address}')
-					print_log(f'Сетевая маска интерфейса сети {inteface_name}: {address.netmask}')
-					print_log(f'Широковещательный IP-адрес интерфейса сети {inteface_name}: {address.broadcast}')
-		print_log(f'Общее количество отправленных байтов: {get_size(self.net_io.bytes_sent)}')
-		print_log(f'Общее количество полученных байтов: {get_size(self.net_io.bytes_recv)}')
-
-	def disk_info(self):
-		# Информация о разделах диска
-		print('=' * 10, 'Информация о дисках', '=' * 10)
-		logging.info('Информация о дисках')
-		for partition in self.partitions:
-			print('=' * 5, f'Информация о разделе диска: {partition.device}', '=' * 5)
-			logging.info(f'Информация о разделе диска: {partition.device}')
-			print_log(f'Файловая система раздела диска {partition.device}: {partition.fstype}')
-			try:
-				partition_usage = psutil.disk_usage(partition.mountpoint)
-			except PermissionError:
-				continue
-			print_log(f'Общий обьем раздела диска {partition.device}: {get_size(partition_usage.total)}')
-			print_log(f'Используемый обьем раздела диска {partition.device}: {get_size(partition_usage.used)}')
-			print_log(f'Свободный обьем раздела диска {partition.device}: {get_size(partition_usage.free)}')
-			print_log(f'Процент объема раздела диска {partition.device}: {get_size(partition_usage.percent)}')
-
-	def ram_info(self):
-		# Информация об оперативной памяти и памяти подкачки
-		print('=' * 10, 'Информация об ОЗУ', '=' * 10)
-		logging.info('Информация об ОЗУ')
-		print_log(f'Объем ОЗУ: {get_size(self.svmem.total)}')
-		print_log(f'Доступно ОЗУ: {get_size(self.svmem.available)}')
-		print_log(f'Используется ОЗУ: {get_size(self.svmem.used)}')
-		print_log(f'Процент ОЗУ: {get_size(self.svmem.percent)}')
-		if self.swap:
-			print('=' * 5, 'Информация о памяти подкачки', '=' * 5)
-			logging.info('Информация о памяти подкачки')
-			print_log(f'Объем памяти подкачки: {get_size(self.swap.total)}')
-			print_log(f'Свободно памяти подкачки: {get_size(self.swap.free)}')
-			print_log(f'Используется памяти подкачки: {get_size(self.swap.used)}')
-			print_log(f'Процент памяти подкачки: {self.swap.percent}%')
-
-
-def start_pc_monitor():
-	# Запускаем монитор ресурсов
-	monitor = ResourceMonitor()
-	monitor.call_all()
-
+  for interface_name, interface_addresses in if_addrs.items():
+    for address in interface_addresses:
+      if str(address.family) == 'AddressFamily.AF_INET':
+        result += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
+      if str(address.family) == 'AddressFamily.AF_PACKET':
+        result += f' Имя интерфейса: {interface_name}, тип: {str(address.family)}, адрес: {address.address}, маска сети: {address.netmask}.'
+  return info
 
 # Собираем данные о системе и составляем разогревочный промт
 def make_prompt():
@@ -167,33 +58,62 @@ def make_prompt():
     shell_name = os.readlink('/proc/%d/exe' % os.getppid())
 
     warmup_prompt = f'Твоя задача отвечать на вопрос пользователя, который работает в операционной системе {system_os}, версия ядра {kernel_version}. Дистрибутив называется {system_distributive} {distributive_version}. Архитектура системы {system_architecture}. Оболочка {shell_name}.'
+    if arguments.more_info: warmup_prompt += 'Информация о процессорах: {prompt_data_cpu()}. Информация о сетевых интерфейсах: {prompt_data_network_iface()}'
     # Если включен флаг -s, то скрипт должен вывести только лишь команду, без объяснений. Пока на данный момент работает плохо
     if arguments.shell:
         warmup_prompt += " {warmup_prompt}. Не пиши дополнительных объяснений. Напиши только одну команду. Нужна только одна команда. Не выводи тэгов code. Команда должна быть готова к выполнению без дополнительных правок. Если тебе недостаточно данных, предоставь наиболее логичное решение. Все перечисленные требования обязательны к выполнению. Без исключений. Все перечисленные требования обязательны к выполнению, без исключений. Ответь на вопрос кратко, одной командой."
     else:
         warmup_prompt += " {warmup_prompt}. Отвечай на вопрос развёрнуто, с объяснениями"
 
-    print('Информация о вашей системе:')
-    start_pc_monitor()
-
     return warmup_prompt
 
-# В функцию надо передать запрос от пользователя
-def do_request( system_message, request_text ):
-    # Авторизация в сервисе GigaChat
-    chat = GigaChat( verify_ssl_certs=False)
-    messages = [ SystemMessage( content = system_message ), HumanMessage( content = request_text ) ]
-    res = chat( messages )
-    print( res.content )
-    
-    return 0
+# Для чатов
+def store_message( message ):
+  file_name = '/tmp/gigachat_last_message'
+  with open( file_name, 'wb' ) as db_file:
+    pickle.dump( message, db_file )
+  return 0
+
+def get_message():
+  file_name = '/tmp/gigachat_last_message'
+  try:
+    with open( file_name, 'rb' ) as db_file:
+      message = pickle.load( db_file )
+    return message
+  except:
+    return ''
+
+def do_request( request_text ):
+  # Авторизация в сервисе GigaChat
+  chat = GigaChat( verify_ssl_certs = False )
+
+  system_message = SystemMessage( content = make_prompt() )
+  user_message = HumanMessage( content = request_text )
+
+  if arguments.last_message:
+    messages = get_message()
+    if messages == '':
+      messages = [ system_message, user_message ]
+    else:
+      messages.append( user_message )
+  else:
+    messages = [ system_message, user_message ]
+
+  res = chat( messages )
+  print( res.content )
+  messages.append( res )
+  store_message( messages )
+
+  return 0
 
 if __name__ == '__main__':
-    # Парсим аргументы
-    arguments = parse_arguments()
+  # Парсим аргументы
+  arguments = parse_arguments()
 
-    if arguments.version:
-        print( 'GigaShell, версия 0.1, 26 ноября 2023' )
-        exit
+#  settings_directory = arguments.settings_directory
 
-    if not arguments.request == '': do_request( make_prompt(), arguments.request )
+  if arguments.version:
+    print( 'GigaShell, версия 0.1, 26 ноября 2023' )
+    exit(0)
+
+  do_request( arguments.request )
